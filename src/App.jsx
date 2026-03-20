@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Upload, Plus, X, Bell, Target, Calendar, Percent, Edit2, RefreshCw, ChevronDown, ChevronUp, Zap, Check } from 'lucide-react';
 
 // Storage adapter - uses localStorage for deployed app
@@ -81,6 +81,157 @@ const getExpirations = () => {
 };
 
 const EXPIRATIONS = getExpirations();
+
+// Shared input styles
+const inputClass = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500";
+const labelClass = "block text-xs text-slate-400 mb-1";
+
+// Memoized Stock Modal Component
+const StockModalComponent = memo(({ isOpen, editTarget, stockForm, setStockForm, onSave, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Stock Position</h3>
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Symbol</label>
+            <input 
+              autoFocus
+              className={inputClass} 
+              value={stockForm.symbol} 
+              onChange={e => setStockForm({ ...stockForm, symbol: e.target.value.toUpperCase() })} 
+              placeholder="AAPL"
+              onKeyDown={e => e.key === 'Enter' && onSave()} 
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Shares</label>
+            <input 
+              type="number" 
+              className={inputClass} 
+              value={stockForm.shares} 
+              onChange={e => setStockForm({ ...stockForm, shares: e.target.value })} 
+              placeholder="200"
+              onKeyDown={e => e.key === 'Enter' && onSave()} 
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Cost Basis (per share)</label>
+            <input 
+              type="number" 
+              step="0.01" 
+              className={inputClass} 
+              value={stockForm.costBasis} 
+              onChange={e => setStockForm({ ...stockForm, costBasis: e.target.value })} 
+              placeholder="150.00"
+              onKeyDown={e => e.key === 'Enter' && onSave()} 
+            />
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onSave} className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
+          <button onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Memoized Option Modal Component
+const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionForm, onSave, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onClose}>
+      <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Option Position</h3>
+        <div className="space-y-3">
+          <div>
+            <label className={labelClass}>Symbol</label>
+            <input 
+              autoFocus
+              className={inputClass} 
+              value={optionForm.symbol} 
+              onChange={e => setOptionForm({ ...optionForm, symbol: e.target.value.toUpperCase() })} 
+              placeholder="AAPL"
+              onKeyDown={e => e.key === 'Enter' && onSave()} 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelClass}>Type</label>
+              <select className={inputClass} value={optionForm.type} onChange={e => setOptionForm({ ...optionForm, type: e.target.value })}>
+                <option value="call">Call</option>
+                <option value="put">Put</option>
+              </select>
+            </div>
+            <div>
+              <label className={labelClass}>Position</label>
+              <select className={inputClass} value={optionForm.position} onChange={e => setOptionForm({ ...optionForm, position: e.target.value })}>
+                <option value="short">Short (Sold)</option>
+                <option value="long">Long (Bought)</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelClass}>Strike</label>
+              <input 
+                type="number" 
+                step="0.50" 
+                className={inputClass} 
+                value={optionForm.strike} 
+                onChange={e => setOptionForm({ ...optionForm, strike: e.target.value })} 
+                placeholder="155.00"
+                onKeyDown={e => e.key === 'Enter' && onSave()} 
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Qty (contracts)</label>
+              <input 
+                type="number" 
+                className={inputClass} 
+                value={optionForm.quantity} 
+                onChange={e => setOptionForm({ ...optionForm, quantity: e.target.value })} 
+                placeholder="2"
+                onKeyDown={e => e.key === 'Enter' && onSave()} 
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className={labelClass}>Expiration</label>
+              <input 
+                type="date" 
+                className={inputClass} 
+                value={optionForm.expiration} 
+                onChange={e => setOptionForm({ ...optionForm, expiration: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Premium / share</label>
+              <input 
+                type="number" 
+                step="0.01" 
+                className={inputClass} 
+                value={optionForm.premium} 
+                onChange={e => setOptionForm({ ...optionForm, premium: e.target.value })} 
+                placeholder="2.50"
+                onKeyDown={e => e.key === 'Enter' && onSave()} 
+              />
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <button onClick={onSave} className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
+          <button onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const PortfolioMonetizer = () => {
   const [positions, setPositions] = useState([]);
@@ -815,148 +966,6 @@ const PortfolioMonetizer = () => {
   const totalValue = positions.reduce((s, p) => s + (marketData[p.symbol]?.price || p.costBasis) * p.shares, 0);
   const totalPnL = positions.reduce((s, p) => s + ((marketData[p.symbol]?.price || p.costBasis) - p.costBasis) * p.shares, 0);
 
-  // ─── Shared styles ─────────────────────────────────────────────────────────
-  const inp = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500";
-  const lbl = "block text-xs text-slate-400 mb-1";
-
-  // ─── Modals ────────────────────────────────────────────────────────────────
-  const renderStockModal = () => (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModal(null)}>
-      <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Stock Position</h3>
-        <div className="space-y-3">
-          <div>
-            <label className={lbl}>Symbol</label>
-            <input 
-              autoFocus
-              className={inp} 
-              value={stockForm.symbol} 
-              onChange={e => setStockForm(prev => ({...prev, symbol: e.target.value.toUpperCase()}))} 
-              placeholder="AAPL"
-              onKeyDown={e => e.key === 'Enter' && saveStock()} 
-            />
-          </div>
-          <div>
-            <label className={lbl}>Shares</label>
-            <input 
-              type="number" 
-              className={inp} 
-              value={stockForm.shares} 
-              onChange={e => setStockForm(prev => ({...prev, shares: e.target.value}))} 
-              placeholder="200"
-              onKeyDown={e => e.key === 'Enter' && saveStock()} 
-            />
-          </div>
-          <div>
-            <label className={lbl}>Cost Basis (per share)</label>
-            <input 
-              type="number" 
-              step="0.01" 
-              className={inp} 
-              value={stockForm.costBasis} 
-              onChange={e => setStockForm(prev => ({...prev, costBasis: e.target.value}))} 
-              placeholder="150.00"
-              onKeyDown={e => e.key === 'Enter' && saveStock()} 
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button onClick={saveStock} className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
-          <button onClick={() => setModal(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderOptionModal = () => (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModal(null)}>
-      <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Option Position</h3>
-        <div className="space-y-3">
-          <div>
-            <label className={lbl}>Symbol</label>
-            <input 
-              autoFocus
-              className={inp} 
-              value={optionForm.symbol} 
-              onChange={e => setOptionForm(prev => ({...prev, symbol: e.target.value.toUpperCase()}))} 
-              placeholder="AAPL"
-              onKeyDown={e => e.key === 'Enter' && saveOption()} 
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={lbl}>Type</label>
-              <select className={inp} value={optionForm.type} onChange={e => setOptionForm(prev => ({...prev, type: e.target.value}))}>
-                <option value="call">Call</option>
-                <option value="put">Put</option>
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Position</label>
-              <select className={inp} value={optionForm.position} onChange={e => setOptionForm(prev => ({...prev, position: e.target.value}))}>
-                <option value="short">Short (Sold)</option>
-                <option value="long">Long (Bought)</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={lbl}>Strike</label>
-              <input 
-                type="number" 
-                step="0.50" 
-                className={inp} 
-                value={optionForm.strike} 
-                onChange={e => setOptionForm(prev => ({...prev, strike: e.target.value}))} 
-                placeholder="155.00"
-                onKeyDown={e => e.key === 'Enter' && saveOption()} 
-              />
-            </div>
-            <div>
-              <label className={lbl}>Qty (contracts)</label>
-              <input 
-                type="number" 
-                className={inp} 
-                value={optionForm.quantity} 
-                onChange={e => setOptionForm(prev => ({...prev, quantity: e.target.value}))} 
-                placeholder="2"
-                onKeyDown={e => e.key === 'Enter' && saveOption()} 
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className={lbl}>Expiration</label>
-              <input 
-                type="date" 
-                className={inp} 
-                value={optionForm.expiration} 
-                onChange={e => setOptionForm(prev => ({...prev, expiration: e.target.value}))}
-              />
-            </div>
-            <div>
-              <label className={lbl}>Premium / share</label>
-              <input 
-                type="number" 
-                step="0.01" 
-                className={inp} 
-                value={optionForm.premium} 
-                onChange={e => setOptionForm(prev => ({...prev, premium: e.target.value}))} 
-                placeholder="2.50"
-                onKeyDown={e => e.key === 'Enter' && saveOption()} 
-              />
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button onClick={saveOption} className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
-          <button onClick={() => setModal(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderConfirmModal = (type) => (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div className="bg-slate-900 rounded-xl border border-red-500 p-6 w-full max-w-sm">
@@ -1356,8 +1365,22 @@ const PortfolioMonetizer = () => {
       </div>
 
       {/* Modals */}
-      {(modal === 'addStock' || modal === 'editStock') && renderStockModal()}
-      {(modal === 'addOption' || modal === 'editOption') && renderOptionModal()}
+      <StockModalComponent 
+        isOpen={modal === 'addStock' || modal === 'editStock'}
+        editTarget={editTarget}
+        stockForm={stockForm}
+        setStockForm={setStockForm}
+        onSave={saveStock}
+        onClose={() => setModal(null)}
+      />
+      <OptionModalComponent 
+        isOpen={modal === 'addOption' || modal === 'editOption'}
+        editTarget={editTarget}
+        optionForm={optionForm}
+        setOptionForm={setOptionForm}
+        onSave={saveOption}
+        onClose={() => setModal(null)}
+      />
       {modal === 'clearStocks' && renderConfirmModal('stocks')}
       {modal === 'clearOptions' && renderConfirmModal('options')}
       
