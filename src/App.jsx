@@ -645,17 +645,96 @@ const PortfolioMonetizer = () => {
     const reader = new FileReader();
     reader.onload = (ev) => {
       const lines = ev.target.result.split('\n').filter(l => l.trim());
-      const start = lines[0]?.toLowerCase().includes('symbol') ? 1 : 0;
+      if (lines.length === 0) return;
+      
+      // Parse CSV properly (handle quoted fields with commas)
+      const parseCSVLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const char = line[i];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            result.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        result.push(current.trim());
+        return result;
+      };
+      
+      // Detect header row and map columns intelligently
+      const firstRow = parseCSVLine(lines[0]);
+      const headerLower = firstRow.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      
+      // Column detection patterns for various broker formats
+      const symbolPatterns = ['symbol', 'ticker', 'stock', 'security', 'name', 'securityname', 'description'];
+      const sharesPatterns = ['shares', 'quantity', 'qty', 'units', 'amount', 'currentqty', 'currentquantity', 'sharecount'];
+      const costPatterns = ['costbasis', 'cost', 'avgcost', 'averagecost', 'avgprice', 'purchaseprice', 'unitcost', 'price', 'costpershare', 'avgcostpershare', 'totacostbasis'];
+      
+      let symbolIdx = -1, sharesIdx = -1, costIdx = -1;
+      let hasHeader = false;
+      
+      // Try to find columns by header names
+      for (let i = 0; i < headerLower.length; i++) {
+        const h = headerLower[i];
+        if (symbolIdx === -1 && symbolPatterns.some(p => h.includes(p))) symbolIdx = i;
+        if (sharesIdx === -1 && sharesPatterns.some(p => h.includes(p))) sharesIdx = i;
+        if (costIdx === -1 && costPatterns.some(p => h.includes(p))) costIdx = i;
+      }
+      
+      // Check if first row looks like headers (contains text patterns)
+      hasHeader = symbolIdx !== -1 || sharesIdx !== -1 || costIdx !== -1;
+      
+      // If no header detected, assume default order: Symbol, Shares, CostBasis
+      if (!hasHeader) {
+        symbolIdx = 0;
+        sharesIdx = 1;
+        costIdx = 2;
+      }
+      
+      // Fallback: if we found some but not all columns
+      if (symbolIdx === -1) symbolIdx = 0;
+      if (sharesIdx === -1) sharesIdx = 1;
+      if (costIdx === -1) costIdx = 2;
+      
+      const startRow = hasHeader ? 1 : 0;
       const imported = [];
-      for (let i = start; i < lines.length; i++) {
-        const [symbol, shares, costBasis] = lines[i].split(',').map(s => s.trim());
-        const ps = parseInt((shares || '').replace(/[^\d]/g, ''));
-        const pc = parseFloat((costBasis || '').replace(/[^\d.]/g, ''));
-        if (symbol && !isNaN(ps) && !isNaN(pc) && ps > 0 && pc > 0) {
-          imported.push({ id: Date.now() + i, symbol: symbol.toUpperCase().replace(/[^A-Z]/g,''), shares: ps, costBasis: pc });
+      
+      for (let i = startRow; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i]);
+        if (cols.length <= Math.max(symbolIdx, sharesIdx, costIdx)) continue;
+        
+        const rawSymbol = cols[symbolIdx] || '';
+        const rawShares = cols[sharesIdx] || '';
+        const rawCost = cols[costIdx] || '';
+        
+        // Extract clean symbol (letters only, max 5 chars for stocks)
+        const symbol = rawSymbol.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
+        
+        // Parse shares (handle commas, decimals, negative signs)
+        const sharesStr = rawShares.replace(/[^\d.-]/g, '');
+        const ps = Math.abs(parseInt(parseFloat(sharesStr) || 0));
+        
+        // Parse cost basis (handle $ signs, commas)
+        const costStr = rawCost.replace(/[^\d.-]/g, '');
+        const pc = Math.abs(parseFloat(costStr) || 0);
+        
+        if (symbol && symbol.length >= 1 && symbol.length <= 5 && ps > 0 && pc > 0) {
+          imported.push({ id: Date.now() + i, symbol, shares: ps, costBasis: pc });
         }
       }
-      if (imported.length > 0) savePositions([...positions, ...imported]);
+      
+      if (imported.length > 0) {
+        savePositions([...positions, ...imported]);
+        console.log(`Imported ${imported.length} positions`);
+      } else {
+        alert('No valid positions found in CSV. Expected columns: Symbol, Shares, Cost Basis (or similar names).');
+      }
     };
     reader.readAsText(file);
     e.target.value = '';
