@@ -820,7 +820,7 @@ const PortfolioMonetizer = () => {
   const lbl = "block text-xs text-slate-400 mb-1";
 
   // ─── Modals ────────────────────────────────────────────────────────────────
-  const StockModal = () => (
+  const renderStockModal = () => (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModal(null)}>
       <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Stock Position</h3>
@@ -828,14 +828,10 @@ const PortfolioMonetizer = () => {
           <div>
             <label className={lbl}>Symbol</label>
             <input 
-              key="symbol-input"
               autoFocus
               className={inp} 
               value={stockForm.symbol} 
-              onChange={e => {
-                const newValue = e.target.value.toUpperCase();
-                setStockForm(prev => ({...prev, symbol: newValue}));
-              }} 
+              onChange={e => setStockForm(prev => ({...prev, symbol: e.target.value.toUpperCase()}))} 
               placeholder="AAPL"
               onKeyDown={e => e.key === 'Enter' && saveStock()} 
             />
@@ -843,13 +839,10 @@ const PortfolioMonetizer = () => {
           <div>
             <label className={lbl}>Shares</label>
             <input 
-              key="shares-input"
               type="number" 
               className={inp} 
               value={stockForm.shares} 
-              onChange={e => {
-                setStockForm(prev => ({...prev, shares: e.target.value}));
-              }} 
+              onChange={e => setStockForm(prev => ({...prev, shares: e.target.value}))} 
               placeholder="200"
               onKeyDown={e => e.key === 'Enter' && saveStock()} 
             />
@@ -857,14 +850,11 @@ const PortfolioMonetizer = () => {
           <div>
             <label className={lbl}>Cost Basis (per share)</label>
             <input 
-              key="costbasis-input"
               type="number" 
               step="0.01" 
               className={inp} 
               value={stockForm.costBasis} 
-              onChange={e => {
-                setStockForm(prev => ({...prev, costBasis: e.target.value}));
-              }} 
+              onChange={e => setStockForm(prev => ({...prev, costBasis: e.target.value}))} 
               placeholder="150.00"
               onKeyDown={e => e.key === 'Enter' && saveStock()} 
             />
@@ -878,7 +868,7 @@ const PortfolioMonetizer = () => {
     </div>
   );
 
-  const OptionModal = () => (
+  const renderOptionModal = () => (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={() => setModal(null)}>
       <div className="bg-slate-900 rounded-xl border border-slate-700 p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-4">{editTarget ? 'Edit' : 'Add'} Option Position</h3>
@@ -886,14 +876,10 @@ const PortfolioMonetizer = () => {
           <div>
             <label className={lbl}>Symbol</label>
             <input 
-              key="opt-symbol"
               autoFocus
               className={inp} 
               value={optionForm.symbol} 
-              onChange={e => {
-                const newValue = e.target.value.toUpperCase();
-                setOptionForm(prev => ({...prev, symbol: newValue}));
-              }} 
+              onChange={e => setOptionForm(prev => ({...prev, symbol: e.target.value.toUpperCase()}))} 
               placeholder="AAPL"
               onKeyDown={e => e.key === 'Enter' && saveOption()} 
             />
@@ -901,14 +887,14 @@ const PortfolioMonetizer = () => {
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={lbl}>Type</label>
-              <select key="opt-type" className={inp} value={optionForm.type} onChange={e => setOptionForm(prev => ({...prev, type: e.target.value}))}>
+              <select className={inp} value={optionForm.type} onChange={e => setOptionForm(prev => ({...prev, type: e.target.value}))}>
                 <option value="call">Call</option>
                 <option value="put">Put</option>
               </select>
             </div>
             <div>
               <label className={lbl}>Position</label>
-              <select key="opt-position" className={inp} value={optionForm.position} onChange={e => setOptionForm(prev => ({...prev, position: e.target.value}))}>
+              <select className={inp} value={optionForm.position} onChange={e => setOptionForm(prev => ({...prev, position: e.target.value}))}>
                 <option value="short">Short (Sold)</option>
                 <option value="long">Long (Bought)</option>
               </select>
@@ -918,7 +904,6 @@ const PortfolioMonetizer = () => {
             <div>
               <label className={lbl}>Strike</label>
               <input 
-                key="opt-strike"
                 type="number" 
                 step="0.50" 
                 className={inp} 
@@ -931,7 +916,6 @@ const PortfolioMonetizer = () => {
             <div>
               <label className={lbl}>Qty (contracts)</label>
               <input 
-                key="opt-quantity"
                 type="number" 
                 className={inp} 
                 value={optionForm.quantity} 
@@ -945,7 +929,6 @@ const PortfolioMonetizer = () => {
             <div>
               <label className={lbl}>Expiration</label>
               <input 
-                key="opt-expiration"
                 type="date" 
                 className={inp} 
                 value={optionForm.expiration} 
@@ -955,7 +938,6 @@ const PortfolioMonetizer = () => {
             <div>
               <label className={lbl}>Premium / share</label>
               <input 
-                key="opt-premium"
                 type="number" 
                 step="0.01" 
                 className={inp} 
@@ -975,7 +957,7 @@ const PortfolioMonetizer = () => {
     </div>
   );
 
-  const ConfirmModal = ({ type }) => (
+  const renderConfirmModal = (type) => (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
       <div className="bg-slate-900 rounded-xl border border-red-500 p-6 w-full max-w-sm">
         <div className="flex items-center gap-2 mb-3"><AlertCircle className="text-red-400" size={20} /><h3 className="text-lg font-bold text-red-400">Confirm Delete</h3></div>
@@ -1374,10 +1356,10 @@ const PortfolioMonetizer = () => {
       </div>
 
       {/* Modals */}
-      {(modal === 'addStock' || modal === 'editStock') && <StockModal />}
-      {(modal === 'addOption' || modal === 'editOption') && <OptionModal />}
-      {modal === 'clearStocks' && <ConfirmModal type="stocks" />}
-      {modal === 'clearOptions' && <ConfirmModal type="options" />}
+      {(modal === 'addStock' || modal === 'editStock') && renderStockModal()}
+      {(modal === 'addOption' || modal === 'editOption') && renderOptionModal()}
+      {modal === 'clearStocks' && renderConfirmModal('stocks')}
+      {modal === 'clearOptions' && renderConfirmModal('options')}
       
       {/* Manual Auth Modal */}
       {showManualAuth && (
