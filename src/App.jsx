@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Upload, Plus, X, Bell, Target, Calendar, Percent, Edit2, RefreshCw, ChevronDown, ChevronUp, Zap, Check } from 'lucide-react';
 
 // Storage adapter - uses localStorage for deployed app
@@ -86,9 +86,33 @@ const EXPIRATIONS = getExpirations();
 const inputClass = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500";
 const labelClass = "block text-xs text-slate-400 mb-1";
 
-// Memoized Stock Modal Component
-const StockModalComponent = memo(({ isOpen, editTarget, stockForm, setStockForm, onSave, onClose }) => {
+// Stock Modal Component with internal state
+const StockModalComponent = ({ isOpen, editTarget, initialData, onSave, onClose }) => {
+  const [symbol, setSymbol] = useState('');
+  const [shares, setShares] = useState('');
+  const [costBasis, setCostBasis] = useState('');
+  const symbolRef = useRef(null);
+  const initialized = useRef(false);
+  
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (isOpen && !initialized.current) {
+      setSymbol(initialData?.symbol || '');
+      setShares(initialData?.shares || '');
+      setCostBasis(initialData?.costBasis || '');
+      initialized.current = true;
+      // Focus after a small delay to ensure DOM is ready
+      setTimeout(() => symbolRef.current?.focus(), 50);
+    } else if (!isOpen) {
+      initialized.current = false;
+    }
+  }, [isOpen, initialData]);
+  
   if (!isOpen) return null;
+  
+  const handleSave = () => {
+    onSave({ symbol, shares, costBasis });
+  };
   
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -98,12 +122,12 @@ const StockModalComponent = memo(({ isOpen, editTarget, stockForm, setStockForm,
           <div>
             <label className={labelClass}>Symbol</label>
             <input 
-              autoFocus
+              ref={symbolRef}
               className={inputClass} 
-              value={stockForm.symbol} 
-              onChange={e => setStockForm({ ...stockForm, symbol: e.target.value.toUpperCase() })} 
+              value={symbol} 
+              onChange={e => setSymbol(e.target.value.toUpperCase())} 
               placeholder="AAPL"
-              onKeyDown={e => e.key === 'Enter' && onSave()} 
+              onKeyDown={e => e.key === 'Enter' && handleSave()} 
             />
           </div>
           <div>
@@ -111,10 +135,10 @@ const StockModalComponent = memo(({ isOpen, editTarget, stockForm, setStockForm,
             <input 
               type="number" 
               className={inputClass} 
-              value={stockForm.shares} 
-              onChange={e => setStockForm({ ...stockForm, shares: e.target.value })} 
+              value={shares} 
+              onChange={e => setShares(e.target.value)} 
               placeholder="200"
-              onKeyDown={e => e.key === 'Enter' && onSave()} 
+              onKeyDown={e => e.key === 'Enter' && handleSave()} 
             />
           </div>
           <div>
@@ -123,25 +147,56 @@ const StockModalComponent = memo(({ isOpen, editTarget, stockForm, setStockForm,
               type="number" 
               step="0.01" 
               className={inputClass} 
-              value={stockForm.costBasis} 
-              onChange={e => setStockForm({ ...stockForm, costBasis: e.target.value })} 
+              value={costBasis} 
+              onChange={e => setCostBasis(e.target.value)} 
               placeholder="150.00"
-              onKeyDown={e => e.key === 'Enter' && onSave()} 
+              onKeyDown={e => e.key === 'Enter' && handleSave()} 
             />
           </div>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onSave} className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
+          <button onClick={handleSave} className="flex-1 bg-emerald-600 hover:bg-emerald-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
           <button onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
         </div>
       </div>
     </div>
   );
-});
+};
 
-// Memoized Option Modal Component
-const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionForm, onSave, onClose }) => {
+// Option Modal Component with internal state
+const OptionModalComponent = ({ isOpen, editTarget, initialData, onSave, onClose }) => {
+  const [symbol, setSymbol] = useState('');
+  const [type, setType] = useState('call');
+  const [position, setPosition] = useState('short');
+  const [strike, setStrike] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [expiration, setExpiration] = useState('');
+  const [premium, setPremium] = useState('');
+  const symbolRef = useRef(null);
+  const initialized = useRef(false);
+  
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (isOpen && !initialized.current) {
+      setSymbol(initialData?.symbol || '');
+      setType(initialData?.type || 'call');
+      setPosition(initialData?.position || 'short');
+      setStrike(initialData?.strike || '');
+      setQuantity(initialData?.quantity || '');
+      setExpiration(initialData?.expiration || '');
+      setPremium(initialData?.premium || '');
+      initialized.current = true;
+      setTimeout(() => symbolRef.current?.focus(), 50);
+    } else if (!isOpen) {
+      initialized.current = false;
+    }
+  }, [isOpen, initialData]);
+  
   if (!isOpen) return null;
+  
+  const handleSave = () => {
+    onSave({ symbol, type, position, strike, quantity, expiration, premium });
+  };
   
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50" onClick={onClose}>
@@ -151,25 +206,25 @@ const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionFo
           <div>
             <label className={labelClass}>Symbol</label>
             <input 
-              autoFocus
+              ref={symbolRef}
               className={inputClass} 
-              value={optionForm.symbol} 
-              onChange={e => setOptionForm({ ...optionForm, symbol: e.target.value.toUpperCase() })} 
+              value={symbol} 
+              onChange={e => setSymbol(e.target.value.toUpperCase())} 
               placeholder="AAPL"
-              onKeyDown={e => e.key === 'Enter' && onSave()} 
+              onKeyDown={e => e.key === 'Enter' && handleSave()} 
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelClass}>Type</label>
-              <select className={inputClass} value={optionForm.type} onChange={e => setOptionForm({ ...optionForm, type: e.target.value })}>
+              <select className={inputClass} value={type} onChange={e => setType(e.target.value)}>
                 <option value="call">Call</option>
                 <option value="put">Put</option>
               </select>
             </div>
             <div>
               <label className={labelClass}>Position</label>
-              <select className={inputClass} value={optionForm.position} onChange={e => setOptionForm({ ...optionForm, position: e.target.value })}>
+              <select className={inputClass} value={position} onChange={e => setPosition(e.target.value)}>
                 <option value="short">Short (Sold)</option>
                 <option value="long">Long (Bought)</option>
               </select>
@@ -182,10 +237,10 @@ const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionFo
                 type="number" 
                 step="0.50" 
                 className={inputClass} 
-                value={optionForm.strike} 
-                onChange={e => setOptionForm({ ...optionForm, strike: e.target.value })} 
+                value={strike} 
+                onChange={e => setStrike(e.target.value)} 
                 placeholder="155.00"
-                onKeyDown={e => e.key === 'Enter' && onSave()} 
+                onKeyDown={e => e.key === 'Enter' && handleSave()} 
               />
             </div>
             <div>
@@ -193,10 +248,10 @@ const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionFo
               <input 
                 type="number" 
                 className={inputClass} 
-                value={optionForm.quantity} 
-                onChange={e => setOptionForm({ ...optionForm, quantity: e.target.value })} 
+                value={quantity} 
+                onChange={e => setQuantity(e.target.value)} 
                 placeholder="2"
-                onKeyDown={e => e.key === 'Enter' && onSave()} 
+                onKeyDown={e => e.key === 'Enter' && handleSave()} 
               />
             </div>
           </div>
@@ -206,8 +261,8 @@ const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionFo
               <input 
                 type="date" 
                 className={inputClass} 
-                value={optionForm.expiration} 
-                onChange={e => setOptionForm({ ...optionForm, expiration: e.target.value })}
+                value={expiration} 
+                onChange={e => setExpiration(e.target.value)}
               />
             </div>
             <div>
@@ -216,22 +271,22 @@ const OptionModalComponent = memo(({ isOpen, editTarget, optionForm, setOptionFo
                 type="number" 
                 step="0.01" 
                 className={inputClass} 
-                value={optionForm.premium} 
-                onChange={e => setOptionForm({ ...optionForm, premium: e.target.value })} 
+                value={premium} 
+                onChange={e => setPremium(e.target.value)} 
                 placeholder="2.50"
-                onKeyDown={e => e.key === 'Enter' && onSave()} 
+                onKeyDown={e => e.key === 'Enter' && handleSave()} 
               />
             </div>
           </div>
         </div>
         <div className="flex gap-2 mt-4">
-          <button onClick={onSave} className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
+          <button onClick={handleSave} className="flex-1 bg-blue-600 hover:bg-blue-500 py-2 rounded-lg text-sm font-medium transition-colors">Save</button>
           <button onClick={onClose} className="flex-1 bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
         </div>
       </div>
     </div>
   );
-});
+};
 
 const PortfolioMonetizer = () => {
   const [positions, setPositions] = useState([]);
@@ -1368,18 +1423,51 @@ const PortfolioMonetizer = () => {
       <StockModalComponent 
         isOpen={modal === 'addStock' || modal === 'editStock'}
         editTarget={editTarget}
-        stockForm={stockForm}
-        setStockForm={setStockForm}
-        onSave={saveStock}
-        onClose={() => setModal(null)}
+        initialData={stockForm}
+        onSave={(formData) => {
+          const sym = formData.symbol.toUpperCase().replace(/[^A-Z]/g, '');
+          const sh = parseInt(formData.shares);
+          const cb = parseFloat(formData.costBasis);
+          if (!sym || isNaN(sh) || isNaN(cb) || sh <= 0 || cb <= 0) return;
+          if (editTarget) {
+            savePositions(positions.map(p => p.id === editTarget.id ? { ...p, symbol: sym, shares: sh, costBasis: cb } : p));
+          } else {
+            savePositions([...positions, { id: Date.now(), symbol: sym, shares: sh, costBasis: cb }]);
+          }
+          setModal(null);
+          setEditTarget(null);
+        }}
+        onClose={() => { setModal(null); setEditTarget(null); }}
       />
       <OptionModalComponent 
         isOpen={modal === 'addOption' || modal === 'editOption'}
         editTarget={editTarget}
-        optionForm={optionForm}
-        setOptionForm={setOptionForm}
-        onSave={saveOption}
-        onClose={() => setModal(null)}
+        initialData={optionForm}
+        onSave={(formData) => {
+          const sym = formData.symbol.toUpperCase().replace(/[^A-Z]/g, '');
+          const st = parseFloat(formData.strike);
+          const qty = parseInt(formData.quantity);
+          const prem = parseFloat(formData.premium);
+          if (!sym || isNaN(st) || isNaN(qty) || isNaN(prem) || st <= 0 || qty <= 0 || prem < 0) return;
+          const newOpt = {
+            id: editTarget?.id || Date.now(),
+            symbol: sym,
+            type: formData.type,
+            position: formData.position,
+            strike: st,
+            quantity: qty,
+            expiration: formData.expiration,
+            premium: prem
+          };
+          if (editTarget) {
+            saveOptions(options.map(o => o.id === editTarget.id ? newOpt : o));
+          } else {
+            saveOptions([...options, newOpt]);
+          }
+          setModal(null);
+          setEditTarget(null);
+        }}
+        onClose={() => { setModal(null); setEditTarget(null); }}
       />
       {modal === 'clearStocks' && renderConfirmModal('stocks')}
       {modal === 'clearOptions' && renderConfirmModal('options')}
