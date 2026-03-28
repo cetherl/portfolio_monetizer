@@ -378,6 +378,93 @@ export default function PortfolioMonetizer() {
     setPriceLoading(false);
   };
 
+  // ─── Fetch Live Option Prices for User's Option Positions ─────────────────
+  const fetchLiveOptionPrices = async () => {
+    if (!schwabToken || optionPositions.length === 0) return;
+    
+    console.log('[v0] Fetching live option prices for', optionPositions.length, 'positions');
+    const newPrices: Record<string, { bid: number; ask: number; mark: number }> = {};
+    const symbolsToFetch = [...new Set(optionPositions.map(o => o.symbol))];
+    
+    for (const symbol of symbolsToFetch) {
+      try {
+        // Fetch both CALL and PUT chains
+        const [callResponse, putResponse] = await Promise.all([
+          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=CALL&includeQuotes=true`, {
+            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
+          }),
+          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=PUT&includeQuotes=true`, {
+            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
+          })
+        ]);
+        
+        const callData = callResponse.ok ? await callResponse.json() : null;
+        const putData = putResponse.ok ? await putResponse.json() : null;
+        
+        console.log('[v0]', symbol, 'callData exists:', !!callData?.callExpDateMap, 'putData exists:', !!putData?.putExpDateMap);
+        
+        // Find matching contracts for user's option positions
+        for (const opt of optionPositions.filter(o => o.symbol === symbol)) {
+          const chainData = opt.type === 'call' ? callData : putData;
+          const expDateMap = opt.type === 'call' ? chainData?.callExpDateMap : chainData?.putExpDateMap;
+          
+          console.log('[v0] Looking for', opt.symbol, opt.type, '$'+opt.strike, opt.expiration, '- expDateMap exists:', !!expDateMap);
+          
+          if (!expDateMap) continue;
+          
+          // Log available expiration dates
+          const availableExps = Object.keys(expDateMap).map(e => e.split(':')[0]);
+          console.log('[v0] Available expirations for', opt.symbol, ':', availableExps.slice(0, 5).join(', '));
+          
+          // Find matching expiration
+          for (const [expDateStr, strikes] of Object.entries(expDateMap)) {
+            const expDate = expDateStr.split(':')[0];
+            if (expDate !== opt.expiration) continue;
+            
+            // Log available strikes for this expiration
+            const availableStrikes = Object.keys(strikes as Record<string, unknown[]>);
+            console.log('[v0] Found exp', expDate, '- available strikes:', availableStrikes.slice(0, 10).join(', '));
+            console.log('[v0] Looking for strike:', opt.strike, 'as', opt.strike.toFixed(1), 'or', opt.strike.toString());
+            
+            // Find matching strike - try multiple formats
+            const strikeKeys = [
+              opt.strike.toFixed(1),
+              opt.strike.toString(),
+              opt.strike.toFixed(0),
+              opt.strike.toFixed(2)
+            ];
+            let contracts = null;
+            for (const key of strikeKeys) {
+              if ((strikes as Record<string, unknown[]>)[key]) {
+                contracts = (strikes as Record<string, unknown[]>)[key];
+                console.log('[v0] Found strike match with key:', key);
+                break;
+              }
+            }
+            
+            if (contracts && contracts[0]) {
+              const contract = contracts[0] as Record<string, unknown>;
+              const key = `${opt.symbol}-${opt.type}-${opt.strike}-${opt.expiration}`;
+              console.log('[v0] Contract found:', key, 'bid=', contract.bid, 'ask=', contract.ask, 'mark=', contract.mark);
+              newPrices[key] = {
+                bid: (contract.bid as number) || 0,
+                ask: (contract.ask as number) || 0,
+                mark: (contract.mark as number) || ((contract.bid as number || 0) + (contract.ask as number || 0)) / 2
+              };
+            } else {
+              console.log('[v0] No contract found for strike', opt.strike);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching option prices for', symbol, error);
+      }
+    }
+    
+    console.log('[v0] Total live prices found:', Object.keys(newPrices).length);
+    setLiveOptionPrices(newPrices);
+  };
+
   const fetchPricesFromSchwab = async () => {
     const symbols = positions.map(p => p.symbol).join(',');
     try {
@@ -487,94 +574,6 @@ export default function PortfolioMonetizer() {
       setMarketData(cached);
     }
   };
-
-  // ─── Fetch Live Option Prices for User's Option Positions ─────────────────
-  const fetchLiveOptionPrices = async () => {
-    if (!schwabToken || optionPositions.length === 0) return;
-    
-    console.log('[v0] Fetching live option prices for', optionPositions.length, 'positions');
-    const newPrices: Record<string, { bid: number; ask: number; mark: number }> = {};
-    const symbolsToFetch = [...new Set(optionPositions.map(o => o.symbol))];
-    
-    for (const symbol of symbolsToFetch) {
-      try {
-        // Fetch both CALL and PUT chains
-        const [callResponse, putResponse] = await Promise.all([
-          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=CALL&includeQuotes=true`, {
-            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
-          }),
-          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=PUT&includeQuotes=true`, {
-            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
-          })
-        ]);
-        
-        const callData = callResponse.ok ? await callResponse.json() : null;
-        const putData = putResponse.ok ? await putResponse.json() : null;
-        
-        console.log('[v0]', symbol, 'callData exists:', !!callData?.callExpDateMap, 'putData exists:', !!putData?.putExpDateMap);
-        
-        // Find matching contracts for user's option positions
-        for (const opt of optionPositions.filter(o => o.symbol === symbol)) {
-          const chainData = opt.type === 'call' ? callData : putData;
-          const expDateMap = opt.type === 'call' ? chainData?.callExpDateMap : chainData?.putExpDateMap;
-          
-          console.log('[v0] Looking for', opt.symbol, opt.type, '$'+opt.strike, opt.expiration, '- expDateMap exists:', !!expDateMap);
-          
-          if (!expDateMap) continue;
-          
-          // Log available expiration dates
-          const availableExps = Object.keys(expDateMap).map(e => e.split(':')[0]);
-          console.log('[v0] Available expirations for', opt.symbol, ':', availableExps.slice(0, 5).join(', '));
-          
-          // Find matching expiration
-          for (const [expDateStr, strikes] of Object.entries(expDateMap)) {
-            const expDate = expDateStr.split(':')[0];
-            if (expDate !== opt.expiration) continue;
-            
-            // Log available strikes for this expiration
-            const availableStrikes = Object.keys(strikes as Record<string, unknown[]>);
-            console.log('[v0] Found exp', expDate, '- available strikes:', availableStrikes.slice(0, 10).join(', '));
-            console.log('[v0] Looking for strike:', opt.strike, 'as', opt.strike.toFixed(1), 'or', opt.strike.toString());
-            
-            // Find matching strike - try multiple formats
-            const strikeKeys = [
-              opt.strike.toFixed(1),
-              opt.strike.toString(),
-              opt.strike.toFixed(0),
-              opt.strike.toFixed(2)
-            ];
-            let contracts = null;
-            for (const key of strikeKeys) {
-              if ((strikes as Record<string, unknown[]>)[key]) {
-                contracts = (strikes as Record<string, unknown[]>)[key];
-                console.log('[v0] Found strike match with key:', key);
-                break;
-              }
-            }
-            
-            if (contracts && contracts[0]) {
-              const contract = contracts[0] as Record<string, unknown>;
-              const key = `${opt.symbol}-${opt.type}-${opt.strike}-${opt.expiration}`;
-              console.log('[v0] Contract found:', key, 'bid=', contract.bid, 'ask=', contract.ask, 'mark=', contract.mark);
-              newPrices[key] = {
-                bid: (contract.bid as number) || 0,
-                ask: (contract.ask as number) || 0,
-                mark: (contract.mark as number) || ((contract.bid as number || 0) + (contract.ask as number || 0)) / 2
-              };
-            } else {
-              console.log('[v0] No contract found for strike', opt.strike);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching option prices for', symbol, error);
-      }
-    }
-    
-    console.log('[v0] Total live prices found:', Object.keys(newPrices).length);
-    setLiveOptionPrices(newPrices);
-  };
-
   // ─── Fetch Options Chain from Schwab ───────────────────────────────────────
   const fetchOptionsChain = async (symbol: string) => {
     if (!schwabToken) return null;
