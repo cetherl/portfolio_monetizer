@@ -533,6 +533,7 @@ export default function PortfolioMonetizer() {
 
       if (optionsData && optionsData.callExpDateMap) {
         const expirationMap = optionsData.callExpDateMap;
+        console.log('[v0] Options data for', pos.symbol, '- first expiration sample:', JSON.stringify(Object.entries(expirationMap)[0]).slice(0, 1500));
         
         for (const [expDateStr, strikes] of Object.entries(expirationMap)) {
           const expDate = expDateStr.split(':')[0];
@@ -553,6 +554,12 @@ export default function PortfolioMonetizer() {
             const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
             const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
             const premium = mark;
+            
+            // Debug: log first contract for each symbol to see field names
+            if (K === parseFloat(Object.keys(strikes as Record<string, unknown[]>)[0])) {
+              console.log('[v0] Contract fields for', pos.symbol, '$' + K + ':', Object.keys(contract).join(', '));
+              console.log('[v0] Contract values:', 'bid=', contract.bid, 'bidPrice=', contract.bidPrice, 'ask=', contract.ask, 'askPrice=', contract.askPrice, 'mark=', contract.mark, 'markPrice=', contract.markPrice);
+            }
             
             if (premium < 0.01) continue;
 
