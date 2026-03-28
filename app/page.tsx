@@ -559,11 +559,16 @@ export default function PortfolioMonetizer() {
             if (K <= pos.costBasis) continue;
             if (K <= S * 1.03) continue;
 
-            // Schwab API may use different field names - check for common variations
-            const bid = (contract.bid as number) || (contract.bidPrice as number) || 0;
-            const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
-            const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
+            // Schwab API uses bid, ask, mark directly
+            const bid = (contract.bid as number) || 0;
+            const ask = (contract.ask as number) || 0;
+            const mark = (contract.mark as number) || ((bid + ask) / 2);
             const premium = mark;
+            
+            // Debug: log first few valid contracts with their values
+            if (opps.length < 5 && premium > 0.01) {
+              console.log(`[v0] VALID: ${pos.symbol} $${K} exp:${expDate} bid=${bid} ask=${ask} mark=${mark} premium=${premium} stock=${S.toFixed(2)}`);
+            }
             
             if (premium < 0.01) continue;
 
@@ -680,10 +685,16 @@ export default function PortfolioMonetizer() {
       return symbolCount[o.symbol] <= 3;
     }).slice(0, 10);
 
-    setOpportunities(limited);
-
-    const hotAlerts = unique.filter(o => o.annualizedReturn >= 40).slice(0, 3).map(o => ({
-      id: o.id,
+  // Debug: log final opportunities
+  console.log(`[v0] Final: ${opps.length} raw opps, ${unique.length} unique, ${limited.length} after limits`);
+  if (limited.length > 0) {
+    console.log('[v0] Top opp:', limited[0].symbol, '$'+limited[0].strike, 'premium='+limited[0].premium.toFixed(2), 'total=$'+limited[0].totalPremium.toFixed(0), 'ann='+limited[0].annualizedReturn.toFixed(1)+'%');
+  }
+  
+  setOpportunities(limited);
+  
+  const hotAlerts = unique.filter(o => o.annualizedReturn >= 40).slice(0, 3).map(o => ({
+  id: o.id,
       message: `${o.symbol} $${o.strike}C ${o.expirationLabel} - ${o.annualizedReturn.toFixed(1)}% annualized, collect $${o.totalPremium.toFixed(0)} total`
     }));
     setAlerts(hotAlerts);
