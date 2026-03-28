@@ -149,6 +149,7 @@ export default function PortfolioMonetizer() {
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [marketData, setMarketData] = useState<Record<string, MarketDataItem>>({});
+  const [liveOptionPrices, setLiveOptionPrices] = useState<Record<string, { bid: number; ask: number; mark: number }>>({});
   const [selectedTimeframe, setSelectedTimeframe] = useState('monthly');
   
   // Schwab OAuth
@@ -423,6 +424,9 @@ export default function PortfolioMonetizer() {
 
       setMarketData(newData);
       setSchwabStatus('Prices updated from Schwab');
+      
+      // Also fetch live option prices for user's option positions
+      fetchLiveOptionPrices();
     } catch(error) {
       console.error('Schwab price fetch error:', error);
       setSchwabStatus(`Error: ${(error as Error).message}`);
@@ -484,6 +488,93 @@ export default function PortfolioMonetizer() {
     }
   };
 
+  // ─── Fetch Live Option Prices for User's Option Positions ─────────────────
+  const fetchLiveOptionPrices = async () => {
+    if (!schwabToken || optionPositions.length === 0) return;
+    
+    console.log('[v0] Fetching live option prices for', optionPositions.length, 'positions');
+    const newPrices: Record<string, { bid: number; ask: number; mark: number }> = {};
+    const symbolsToFetch = [...new Set(optionPositions.map(o => o.symbol))];
+    
+    for (const symbol of symbolsToFetch) {
+      try {
+        // Fetch both CALL and PUT chains
+        const [callResponse, putResponse] = await Promise.all([
+          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=CALL&includeQuotes=true`, {
+            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
+          }),
+          fetch(`/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=PUT&includeQuotes=true`, {
+            headers: { 'Authorization': `Bearer ${schwabToken}`, 'Accept': 'application/json' }
+          })
+        ]);
+        
+        const callData = callResponse.ok ? await callResponse.json() : null;
+        const putData = putResponse.ok ? await putResponse.json() : null;
+        
+        console.log('[v0]', symbol, 'callData exists:', !!callData?.callExpDateMap, 'putData exists:', !!putData?.putExpDateMap);
+        
+        // Find matching contracts for user's option positions
+        for (const opt of optionPositions.filter(o => o.symbol === symbol)) {
+          const chainData = opt.type === 'call' ? callData : putData;
+          const expDateMap = opt.type === 'call' ? chainData?.callExpDateMap : chainData?.putExpDateMap;
+          
+          console.log('[v0] Looking for', opt.symbol, opt.type, '$'+opt.strike, opt.expiration, '- expDateMap exists:', !!expDateMap);
+          
+          if (!expDateMap) continue;
+          
+          // Log available expiration dates
+          const availableExps = Object.keys(expDateMap).map(e => e.split(':')[0]);
+          console.log('[v0] Available expirations for', opt.symbol, ':', availableExps.slice(0, 5).join(', '));
+          
+          // Find matching expiration
+          for (const [expDateStr, strikes] of Object.entries(expDateMap)) {
+            const expDate = expDateStr.split(':')[0];
+            if (expDate !== opt.expiration) continue;
+            
+            // Log available strikes for this expiration
+            const availableStrikes = Object.keys(strikes as Record<string, unknown[]>);
+            console.log('[v0] Found exp', expDate, '- available strikes:', availableStrikes.slice(0, 10).join(', '));
+            console.log('[v0] Looking for strike:', opt.strike, 'as', opt.strike.toFixed(1), 'or', opt.strike.toString());
+            
+            // Find matching strike - try multiple formats
+            const strikeKeys = [
+              opt.strike.toFixed(1),
+              opt.strike.toString(),
+              opt.strike.toFixed(0),
+              opt.strike.toFixed(2)
+            ];
+            let contracts = null;
+            for (const key of strikeKeys) {
+              if ((strikes as Record<string, unknown[]>)[key]) {
+                contracts = (strikes as Record<string, unknown[]>)[key];
+                console.log('[v0] Found strike match with key:', key);
+                break;
+              }
+            }
+            
+            if (contracts && contracts[0]) {
+              const contract = contracts[0] as Record<string, unknown>;
+              const key = `${opt.symbol}-${opt.type}-${opt.strike}-${opt.expiration}`;
+              console.log('[v0] Contract found:', key, 'bid=', contract.bid, 'ask=', contract.ask, 'mark=', contract.mark);
+              newPrices[key] = {
+                bid: (contract.bid as number) || 0,
+                ask: (contract.ask as number) || 0,
+                mark: (contract.mark as number) || ((contract.bid as number || 0) + (contract.ask as number || 0)) / 2
+              };
+            } else {
+              console.log('[v0] No contract found for strike', opt.strike);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching option prices for', symbol, error);
+      }
+    }
+    
+    console.log('[v0] Total live prices found:', Object.keys(newPrices).length);
+    setLiveOptionPrices(newPrices);
+  };
+
   // ─── Fetch Options Chain from Schwab ───────────────────────────────────────
   const fetchOptionsChain = async (symbol: string) => {
     if (!schwabToken) return null;
@@ -517,7 +608,6 @@ export default function PortfolioMonetizer() {
   // ─── Opportunity Scanner ───────────────────────────────────────────────────
   const scanOpportunities = useCallback(async () => {
     const opps: Opportunity[] = [];
-    const loggedSymbols = new Set<string>();
 
     for (const pos of positions) {
       if (!pos.symbol || !pos.shares || !pos.costBasis) continue;
@@ -534,7 +624,7 @@ export default function PortfolioMonetizer() {
 
       if (optionsData && optionsData.callExpDateMap) {
         const expirationMap = optionsData.callExpDateMap;
-        console.log('[v0] Options data for', pos.symbol, '- first expiration sample:', JSON.stringify(Object.entries(expirationMap)[0]).slice(0, 1500));
+        
         
         for (const [expDateStr, strikes] of Object.entries(expirationMap)) {
           const expDate = expDateStr.split(':')[0];
@@ -543,14 +633,7 @@ export default function PortfolioMonetizer() {
           const targetDTE = selectedTimeframe === 'weekly' ? [5,12] : selectedTimeframe === 'monthly' ? [20,45] : [60,90];
           if (dte < targetDTE[0] || dte > targetDTE[1]) continue;
 
-          // Debug: log first contract structure to see field names (before filtering)
-          const firstStrikeKey = Object.keys(strikes as Record<string, unknown[]>)[0];
-          const firstContract = (strikes as Record<string, unknown[]>)[firstStrikeKey]?.[0] as Record<string, unknown>;
-          if (firstContract && !loggedSymbols.has(pos.symbol)) {
-            loggedSymbols.add(pos.symbol);
-            console.log('[v0] Contract fields for', pos.symbol, ':', Object.keys(firstContract).join(', '));
-            console.log('[v0] Sample contract:', JSON.stringify(firstContract).slice(0, 500));
-          }
+
           
           for (const [strikeStr, contracts] of Object.entries(strikes as Record<string, unknown[]>)) {
             const contract = (contracts as Record<string, unknown>[])[0];
@@ -559,10 +642,10 @@ export default function PortfolioMonetizer() {
             if (K <= pos.costBasis) continue;
             if (K <= S * 1.03) continue;
 
-            // Schwab API may use different field names - check for common variations
-            const bid = (contract.bid as number) || (contract.bidPrice as number) || 0;
-            const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
-            const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
+            // Schwab API uses bid, ask, mark directly
+            const bid = (contract.bid as number) || 0;
+            const ask = (contract.ask as number) || 0;
+            const mark = (contract.mark as number) || ((bid + ask) / 2);
             const premium = mark;
             
             if (premium < 0.01) continue;
@@ -680,10 +763,12 @@ export default function PortfolioMonetizer() {
       return symbolCount[o.symbol] <= 3;
     }).slice(0, 10);
 
-    setOpportunities(limited);
 
-    const hotAlerts = unique.filter(o => o.annualizedReturn >= 40).slice(0, 3).map(o => ({
-      id: o.id,
+  
+  setOpportunities(limited);
+  
+  const hotAlerts = unique.filter(o => o.annualizedReturn >= 40).slice(0, 3).map(o => ({
+  id: o.id,
       message: `${o.symbol} $${o.strike}C ${o.expirationLabel} - ${o.annualizedReturn.toFixed(1)}% annualized, collect $${o.totalPremium.toFixed(0)} total`
     }));
     setAlerts(hotAlerts);
@@ -1296,22 +1381,33 @@ export default function PortfolioMonetizer() {
                 const stockData = marketData[opt.symbol];
                 const stockPrice = stockData?.price || 0;
                 
-                let currentPremium = 0;
-                if (stockPrice > 0 && dte > 0) {
-                  if (opt.type === 'call') {
-                    const calc = calcOptionData(stockPrice, opt.strike, dte);
-                    currentPremium = calc.premium;
-                  } else {
-                    const calc = calcOptionData(opt.strike, stockPrice, dte);
-                    currentPremium = calc.premium;
-                  }
-                } else if (expired) {
-                  if (opt.type === 'call') {
-                    currentPremium = Math.max(0, stockPrice - opt.strike);
-                  } else {
-                    currentPremium = Math.max(0, opt.strike - stockPrice);
-                  }
-                }
+// Check for live Schwab price first
+  const optionKey = `${opt.symbol}-${opt.type}-${opt.strike}-${opt.expiration}`;
+  const livePrice = liveOptionPrices[optionKey];
+  
+  let currentPremium = 0;
+  let usingLivePrice = false;
+  
+  if (livePrice && livePrice.mark > 0) {
+    // Use live Schwab price
+    currentPremium = livePrice.mark;
+    usingLivePrice = true;
+  } else if (stockPrice > 0 && dte > 0) {
+    // Fallback to Black-Scholes estimate
+    if (opt.type === 'call') {
+      const calc = calcOptionData(stockPrice, opt.strike, dte);
+      currentPremium = calc.premium;
+    } else {
+      const calc = calcOptionData(opt.strike, stockPrice, dte);
+      currentPremium = calc.premium;
+    }
+  } else if (expired) {
+    if (opt.type === 'call') {
+      currentPremium = Math.max(0, stockPrice - opt.strike);
+    } else {
+      currentPremium = Math.max(0, opt.strike - stockPrice);
+    }
+  }
                 
                 const entryValue = opt.premium * opt.quantity * 100;
                 const currentValue = currentPremium * opt.quantity * 100;
