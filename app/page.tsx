@@ -517,6 +517,7 @@ export default function PortfolioMonetizer() {
   // ─── Opportunity Scanner ───────────────────────────────────────────────────
   const scanOpportunities = useCallback(async () => {
     const opps: Opportunity[] = [];
+    const loggedSymbols = new Set<string>();
 
     for (const pos of positions) {
       if (!pos.symbol || !pos.shares || !pos.costBasis) continue;
@@ -542,6 +543,15 @@ export default function PortfolioMonetizer() {
           const targetDTE = selectedTimeframe === 'weekly' ? [5,12] : selectedTimeframe === 'monthly' ? [20,45] : [60,90];
           if (dte < targetDTE[0] || dte > targetDTE[1]) continue;
 
+          // Debug: log first contract structure to see field names (before filtering)
+          const firstStrikeKey = Object.keys(strikes as Record<string, unknown[]>)[0];
+          const firstContract = (strikes as Record<string, unknown[]>)[firstStrikeKey]?.[0] as Record<string, unknown>;
+          if (firstContract && !loggedSymbols.has(pos.symbol)) {
+            loggedSymbols.add(pos.symbol);
+            console.log('[v0] Contract fields for', pos.symbol, ':', Object.keys(firstContract).join(', '));
+            console.log('[v0] Sample contract:', JSON.stringify(firstContract).slice(0, 500));
+          }
+          
           for (const [strikeStr, contracts] of Object.entries(strikes as Record<string, unknown[]>)) {
             const contract = (contracts as Record<string, unknown>[])[0];
             const K = parseFloat(strikeStr);
@@ -554,12 +564,6 @@ export default function PortfolioMonetizer() {
             const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
             const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
             const premium = mark;
-            
-            // Debug: log first contract for each symbol to see field names
-            if (K === parseFloat(Object.keys(strikes as Record<string, unknown[]>)[0])) {
-              console.log('[v0] Contract fields for', pos.symbol, '$' + K + ':', Object.keys(contract).join(', '));
-              console.log('[v0] Contract values:', 'bid=', contract.bid, 'bidPrice=', contract.bidPrice, 'ask=', contract.ask, 'askPrice=', contract.askPrice, 'mark=', contract.mark, 'markPrice=', contract.markPrice);
-            }
             
             if (premium < 0.01) continue;
 
