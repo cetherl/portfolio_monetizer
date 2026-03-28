@@ -505,13 +505,15 @@ export default function PortfolioMonetizer() {
         return null;
       }
 
-      if (!response.ok) return null;
-      return await response.json();
-    } catch(error) {
-      console.error('Options chain fetch error:', error);
-      return null;
-    }
-  };
+        if (!response.ok) return null;
+        const data = await response.json();
+        console.log('[v0] Options chain response for', symbol, ':', JSON.stringify(data).slice(0, 2000));
+        return data;
+      } catch(error) {
+        console.error('Options chain fetch error:', error);
+        return null;
+      }
+    };
 
   // ─── Opportunity Scanner ───────────────────────────────────────────────────
   const scanOpportunities = useCallback(async () => {
@@ -541,16 +543,24 @@ export default function PortfolioMonetizer() {
           if (dte < targetDTE[0] || dte > targetDTE[1]) continue;
 
           for (const [strikeStr, contracts] of Object.entries(strikes as Record<string, unknown[]>)) {
-            const contract = (contracts as { bid?: number; ask?: number; mark?: number; delta?: number; volatility?: number; totalVolume?: number; openInterest?: number }[])[0];
+            const contract = (contracts as Record<string, unknown>[])[0];
             const K = parseFloat(strikeStr);
+            
+            // Debug: Log the first few contracts to see their structure
+            if (K === parseFloat(Object.keys(strikes as Record<string, unknown[]>)[0])) {
+              console.log('[v0] Contract structure sample:', JSON.stringify(contract));
+            }
             
             if (K <= pos.costBasis) continue;
             if (K <= S * 1.03) continue;
 
-            const bid = contract.bid || 0;
-            const ask = contract.ask || 0;
-            const mark = contract.mark || ((bid + ask) / 2);
+            // Schwab API may use different field names - check for common variations
+            const bid = (contract.bid as number) || (contract.bidPrice as number) || 0;
+            const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
+            const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
             const premium = mark;
+            
+            console.log(`[v0] ${pos.symbol} $${K}: bid=${bid}, ask=${ask}, mark=${mark}, premium=${premium}`);
             
             if (premium < 0.01) continue;
 
@@ -915,7 +925,7 @@ export default function PortfolioMonetizer() {
   const inp = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500";
   const lbl = "block text-xs text-slate-400 mb-1";
 
-  // ─── Modals ──────────────────��─────────────────────────────────────────────
+  // ─── Modals ──────────────────���─────────────────────────────────────────────
 
 
   const ConfirmModal = ({ type }: { type: string }) => (
