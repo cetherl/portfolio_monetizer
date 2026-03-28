@@ -380,7 +380,7 @@ export default function PortfolioMonetizer() {
   const fetchPricesFromSchwab = async () => {
     const symbols = positions.map(p => p.symbol).join(',');
     try {
-      const response = await fetch(`${SCHWAB_CONFIG.quotesUrl}?symbols=${symbols}&fields=quote`, {
+      const response = await fetch(`/api/schwab/quotes?symbols=${encodeURIComponent(symbols)}`, {
         headers: {
           'Authorization': `Bearer ${schwabToken}`,
           'Accept': 'application/json'
@@ -490,7 +490,7 @@ export default function PortfolioMonetizer() {
     
     try {
       const response = await fetch(
-        `${SCHWAB_CONFIG.optionsUrl}?symbol=${symbol}&contractType=CALL&includeQuotes=true`,
+        `/api/schwab/options?symbol=${encodeURIComponent(symbol)}&contractType=CALL&includeQuotes=true`,
         {
           headers: {
             'Authorization': `Bearer ${schwabToken}`,
@@ -507,7 +507,6 @@ export default function PortfolioMonetizer() {
 
         if (!response.ok) return null;
         const data = await response.json();
-        console.log('[v0] Options chain response for', symbol, ':', JSON.stringify(data).slice(0, 2000));
         return data;
       } catch(error) {
         console.error('Options chain fetch error:', error);
@@ -546,11 +545,6 @@ export default function PortfolioMonetizer() {
             const contract = (contracts as Record<string, unknown>[])[0];
             const K = parseFloat(strikeStr);
             
-            // Debug: Log the first few contracts to see their structure
-            if (K === parseFloat(Object.keys(strikes as Record<string, unknown[]>)[0])) {
-              console.log('[v0] Contract structure sample:', JSON.stringify(contract));
-            }
-            
             if (K <= pos.costBasis) continue;
             if (K <= S * 1.03) continue;
 
@@ -559,8 +553,6 @@ export default function PortfolioMonetizer() {
             const ask = (contract.ask as number) || (contract.askPrice as number) || 0;
             const mark = (contract.mark as number) || (contract.markPrice as number) || ((bid + ask) / 2);
             const premium = mark;
-            
-            console.log(`[v0] ${pos.symbol} $${K}: bid=${bid}, ask=${ask}, mark=${mark}, premium=${premium}`);
             
             if (premium < 0.01) continue;
 
