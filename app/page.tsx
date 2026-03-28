@@ -1385,13 +1385,18 @@ export default function PortfolioMonetizer() {
   const optionKey = `${opt.symbol}-${opt.type}-${opt.strike}-${opt.expiration}`;
   const livePrice = liveOptionPrices[optionKey];
   
+  // Debug: log the lookup
+  console.log('[v0] Option display lookup:', optionKey, 'found:', !!livePrice, 'mark:', livePrice?.mark);
+  console.log('[v0] Available keys:', Object.keys(liveOptionPrices).slice(0, 5));
+  
   let currentPremium = 0;
   let usingLivePrice = false;
   
   if (livePrice && livePrice.mark > 0) {
-    // Use live Schwab price
-    currentPremium = livePrice.mark;
-    usingLivePrice = true;
+  // Use live Schwab price
+  currentPremium = livePrice.mark;
+  usingLivePrice = true;
+  console.log('[v0] Using LIVE price for', opt.symbol, ':', currentPremium);
   } else if (stockPrice > 0 && dte > 0) {
     // Fallback to Black-Scholes estimate
     if (opt.type === 'call') {
