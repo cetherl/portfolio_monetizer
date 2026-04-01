@@ -1007,7 +1007,7 @@ export default function PortfolioMonetizer() {
     e.target.value = '';
   };
 
-  // ─── CSV Import for Options ─────────────────────────────────��─���────────────
+  // ─── CSV Import for Options ─────────────────────────────────����─���────────────
   const importOptionsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1191,7 +1191,7 @@ export default function PortfolioMonetizer() {
     </div>
   );
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // Render
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -1202,7 +1202,7 @@ export default function PortfolioMonetizer() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
       {/* Header */}
@@ -1318,10 +1318,10 @@ export default function PortfolioMonetizer() {
           )}
         </div>
       </div>
-      <div className="text-sm text-slate-400 mb-6">
+      <p className="text-sm text-slate-400 mb-6">
         Maximize premium - Protect shares
-        {schwabStatus && <span> - {schwabStatus}</span>}
-      </div>
+        {schwabStatus ? <span> - {schwabStatus}</span> : null}
+      </p>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-slate-900 rounded-xl p-4 border border-slate-800">
