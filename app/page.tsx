@@ -914,9 +914,9 @@ export default function PortfolioMonetizer() {
         case 'breakeven': aVal = a.breakeven; bVal = b.breakeven; break;
         case 'dte': aVal = a.dte; bVal = b.dte; break;
         case 'premium': aVal = a.premium; bVal = b.premium; break;
-        case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
-        case 'annualizedReturn': aVal = a.annualizedReturn; bVal = b.annualizedReturn; break;
-        case 'probProfit': aVal = a.probProfit; bVal = b.probProfit; break;
+case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
+  case 'incomePerDay': aVal = a.totalPremium / a.dte; bVal = b.totalPremium / b.dte; break;
+  case 'probProfit': aVal = a.probProfit; bVal = b.probProfit; break;
         default: return 0;
       }
       if (typeof aVal === 'string') return oppSort.direction === 'asc' ? aVal.localeCompare(bVal as string) : (bVal as string).localeCompare(aVal);
@@ -1066,16 +1066,15 @@ export default function PortfolioMonetizer() {
               <th className="text-left p-3 text-slate-400 font-medium">Exp</th>
               <th onClick={() => handleOppSort('dte')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">DTE {oppSort.column === 'dte' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
               <th onClick={() => handleOppSort('premium')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">Premium {oppSort.column === 'premium' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
-              <th onClick={() => handleOppSort('totalPremium')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">Total $ {oppSort.column === 'totalPremium' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
-              <th onClick={() => handleOppSort('annualizedReturn')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">Ann % {oppSort.column === 'annualizedReturn' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
-              <th onClick={() => handleOppSort('probProfit')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">PoP {oppSort.column === 'probProfit' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
-              {schwabConnected && <th className="text-left p-3 text-slate-400 font-medium">IV</th>}
-              {schwabConnected && <th className="text-left p-3 text-slate-400 font-medium">Vol/OI</th>}
+<th onClick={() => handleOppSort('totalPremium')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">Total $ {oppSort.column === 'totalPremium' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
+  <th onClick={() => handleOppSort('incomePerDay')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">$/Day {oppSort.column === 'incomePerDay' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
+  <th onClick={() => handleOppSort('probProfit')} className="text-left p-3 text-slate-400 font-medium cursor-pointer hover:text-slate-200 select-none">PoP {oppSort.column === 'probProfit' && (oppSort.direction === 'asc' ? <ChevronUp className="inline w-3 h-3"/> : <ChevronDown className="inline w-3 h-3"/>)}</th>
+  {schwabConnected && <th className="text-left p-3 text-slate-400 font-medium">Vol/OI</th>}
             </tr>
           </thead>
           <tbody>
             {opportunities.length === 0 ? (
-              <tr><td colSpan={14} className="p-8 text-center text-slate-500">{loading || priceLoading ? 'Loading...' : positions.length === 0 ? 'Add positions' : 'No opportunities at 20% or higher'}</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-slate-500">{loading || priceLoading ? 'Loading...' : positions.length === 0 ? 'Add positions' : 'No opportunities at 20% or higher'}</td></tr>
             ) : getSortedOpportunities().map(opp => (
               <tr key={opp.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
                 <td className="p-3"><span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded text-xs">{opp.strategyType}</span></td>
@@ -1088,9 +1087,8 @@ export default function PortfolioMonetizer() {
                 <td className="p-3">{opp.dte}d</td>
                 <td className="p-3">{opp.bid !== undefined ? `$${opp.premium.toFixed(2)}` : `~$${opp.premium.toFixed(2)}`}</td>
                 <td className="p-3 font-medium">${opp.totalPremium.toFixed(0)}</td>
-                <td className="p-3"><span className={`font-bold ${opp.annualizedReturn>=40?'text-amber-300':opp.annualizedReturn>=30?'text-emerald-300':'text-green-400'}`}>{opp.urgency==='high' && 'HOT '}{opp.annualizedReturn.toFixed(1)}%</span></td>
+                <td className="p-3"><span className={`font-bold ${(opp.totalPremium / opp.dte) >= 50 ? 'text-amber-300' : (opp.totalPremium / opp.dte) >= 30 ? 'text-emerald-300' : 'text-green-400'}`}>${(opp.totalPremium / opp.dte).toFixed(2)}</span></td>
                 <td className="p-3"><span className={`${opp.probProfit >= 80 ? 'text-green-400' : opp.probProfit >= 60 ? 'text-yellow-400' : 'text-orange-400'}`}>{opp.probProfit.toFixed(0)}%</span></td>
-                {schwabConnected && <td className="p-3 text-xs">{opp.iv}</td>}
                 {schwabConnected && <td className="p-3 text-xs">{opp.volume !== '--' ? `${opp.volume}/${opp.openInterest}` : '--'}</td>}
               </tr>
             ))}
