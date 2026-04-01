@@ -1191,7 +1191,7 @@ export default function PortfolioMonetizer() {
     </div>
   );
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  // ─── Render ─────────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -1205,7 +1205,7 @@ export default function PortfolioMonetizer() {
   
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
-  {/* Header */}
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <DollarSign className="w-8 h-8 text-emerald-400" />
@@ -1220,104 +1220,103 @@ export default function PortfolioMonetizer() {
             <button onClick={connectSchwab} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-medium flex items-center gap-1">
               <Zap className="w-3 h-3" /> Connect Schwab
             </button>
-  )}
-  
-  {/* Template Dropdown */}
-  <div className="relative" ref={templateDropdownRef}>
-    <button 
-      onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); }}
-      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1"
-    >
-      <FileText className="w-3 h-3" /> Templates <ChevronDown className={`w-3 h-3 transition-transform ${templateDropdownOpen ? 'rotate-180' : ''}`} />
-    </button>
-    {templateDropdownOpen && (
-      <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[140px]">
-        <button 
-          onClick={() => { downloadTemplate(); setTemplateDropdownOpen(false); }} 
-          className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-t-lg"
-        >
-          Stock Template
-        </button>
-        <button 
-          onClick={() => { downloadOptionsTemplate(); setTemplateDropdownOpen(false); }} 
-          className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg"
-        >
-          Options Template
-        </button>
-      </div>
-    )}
-  </div>
-  
-  {/* Import Dropdown */}
-  <div className="relative" ref={importDropdownRef}>
-    <button 
-      onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); }}
-      className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1"
-    >
-      <Upload className="w-3 h-3" /> Import <ChevronDown className={`w-3 h-3 transition-transform ${importDropdownOpen ? 'rotate-180' : ''}`} />
-    </button>
-    {importDropdownOpen && (
-      <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[140px]">
-        <label className="block w-full px-3 py-2 text-left text-xs hover:bg-slate-700 cursor-pointer rounded-t-lg">
-          Import Stocks
-          <input type="file" accept=".csv" onChange={(e) => { importCSV(e); setImportDropdownOpen(false); }} className="hidden" />
-        </label>
-        <label className="block w-full px-3 py-2 text-left text-xs hover:bg-slate-700 cursor-pointer rounded-b-lg">
-          Import Options
-          <input type="file" accept=".csv" onChange={(e) => { importOptionsCSV(e); setImportDropdownOpen(false); }} className="hidden" />
-        </label>
-      </div>
-    )}
-  </div>
-  
-  <button onClick={openAddStock} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1">
+          )}
+          
+          {/* Template Dropdown */}
+          <div className="relative" ref={templateDropdownRef}>
+            <button 
+              onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); }}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1"
+            >
+              <FileText className="w-3 h-3" /> Templates <ChevronDown className={`w-3 h-3 transition-transform ${templateDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {templateDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[140px]">
+                <button 
+                  onClick={() => { downloadTemplate(); setTemplateDropdownOpen(false); }} 
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-t-lg"
+                >
+                  Stock Template
+                </button>
+                <button 
+                  onClick={() => { downloadOptionsTemplate(); setTemplateDropdownOpen(false); }} 
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg"
+                >
+                  Options Template
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Import Dropdown */}
+          <div className="relative" ref={importDropdownRef}>
+            <button 
+              onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); }}
+              className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1"
+            >
+              <Upload className="w-3 h-3" /> Import <ChevronDown className={`w-3 h-3 transition-transform ${importDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {importDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[140px]">
+                <label className="block w-full px-3 py-2 text-left text-xs hover:bg-slate-700 cursor-pointer rounded-t-lg">
+                  Import Stocks
+                  <input type="file" accept=".csv" onChange={(e) => { importCSV(e); setImportDropdownOpen(false); }} className="hidden" />
+                </label>
+                <label className="block w-full px-3 py-2 text-left text-xs hover:bg-slate-700 cursor-pointer rounded-b-lg">
+                  Import Options
+                  <input type="file" accept=".csv" onChange={(e) => { importOptionsCSV(e); setImportDropdownOpen(false); }} className="hidden" />
+                </label>
+              </div>
+            )}
+          </div>
+          
+          <button onClick={openAddStock} className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1">
             <Plus className="w-3 h-3" /> Stock
           </button>
           <button onClick={openAddOption} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-medium flex items-center gap-1">
             <Plus className="w-3 h-3" /> Option
           </button>
-<button onClick={fetchPrices} disabled={priceLoading} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50">
-  <RefreshCw className={`w-3 h-3 ${priceLoading ? 'animate-spin' : ''}`} /> Refresh
-  </button>
-  
-  {/* User Account Menu */}
-  {user ? (
-    <div className="relative" ref={userMenuRef}>
-      <button
-        onClick={() => setUserMenuOpen(!userMenuOpen)}
-        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
-      >
-        <User className="w-3 h-3" />
-        <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
-        <ChevronDown className={`w-3 h-3 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {userMenuOpen && (
-        <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[160px]">
-          <div className="px-3 py-2 text-xs text-slate-400 border-b border-slate-700">
-            {user.email}
-          </div>
-          <div className="px-3 py-2 text-xs text-emerald-400 border-b border-slate-700">
-            Data synced across devices
-          </div>
-          <button
-            onClick={() => { handleSignOut(); setUserMenuOpen(false); }}
-            className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg flex items-center gap-2 text-red-400"
-          >
-            <LogOut className="w-3 h-3" /> Sign Out
+          <button onClick={fetchPrices} disabled={priceLoading} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50">
+            <RefreshCw className={`w-3 h-3 ${priceLoading ? 'animate-spin' : ''}`} /> Refresh
           </button>
+          
+          {/* User Account Menu */}
+          {user ? (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
+              >
+                <User className="w-3 h-3" />
+                <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
+                <ChevronDown className={`w-3 h-3 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {userMenuOpen && (
+                <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[160px]">
+                  <div className="px-3 py-2 text-xs text-slate-400 border-b border-slate-700">
+                    {user.email}
+                  </div>
+                  <div className="px-3 py-2 text-xs text-emerald-400 border-b border-slate-700">
+                    Data synced across devices
+                  </div>
+                  <button
+                    onClick={() => { handleSignOut(); setUserMenuOpen(false); }}
+                    className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg flex items-center gap-2 text-red-400"
+                  >
+                    <LogOut className="w-3 h-3" /> Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push('/auth/login')}
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
+            >
+              <User className="w-3 h-3" /> Sign In
+            </button>
+          )}
         </div>
-      )}
-    </div>
-  ) : (
-    <button
-      onClick={() => router.push('/auth/login')}
-      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
-    >
-      <User className="w-3 h-3" /> Sign In
-    </button>
-  )}
-  </div>
-  </div>
       </div>
 
       <div className="text-sm text-slate-400 mb-6">
