@@ -1,3 +1,4 @@
+/* Portfolio Monetizer v2 - Supabase Integration */
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -1007,7 +1008,7 @@ export default function PortfolioMonetizer() {
     e.target.value = '';
   };
 
-  // ─── CSV Import for Options ─────────────────────────────────����─���────────────
+  // ─── CSV Import for Options ─────────────────────────────────������─���────────────
   const importOptionsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1190,18 +1191,6 @@ export default function PortfolioMonetizer() {
       </div>
     </div>
   );
-
-  // Render
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="text-center">
-          <DollarSign className="w-12 h-12 text-emerald-400 mx-auto mb-4 animate-pulse" />
-          <p className="text-slate-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
