@@ -1,7 +1,10 @@
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Upload, Download, Plus, X, Bell, Target, Calendar, Percent, Edit2, RefreshCw, ChevronDown, ChevronUp, Zap, Check, FileText } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Upload, Download, Plus, X, Bell, Target, Calendar, Percent, Edit2, RefreshCw, ChevronDown, ChevronUp, Zap, Check, FileText, LogOut, User } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Storage adapter - uses localStorage for deployed app
 const storage = {
@@ -152,6 +155,14 @@ export default function PortfolioMonetizer() {
   const [liveOptionPrices, setLiveOptionPrices] = useState<Record<string, { bid: number; ask: number; mark: number }>>({});
   const [selectedTimeframe, setSelectedTimeframe] = useState('monthly');
   
+  // Supabase auth state
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
+  const router = useRouter();
+  
   // Schwab OAuth
   const [schwabToken, setSchwabToken] = useState<string | null>(null);
   const [schwabRefreshToken, setSchwabRefreshToken] = useState<string | null>(null);
@@ -184,6 +195,9 @@ export default function PortfolioMonetizer() {
       }
       if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
         setImportDropdownOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -339,30 +353,198 @@ export default function PortfolioMonetizer() {
     setSchwabStatus('');
   };
 
-  // ─── Storage ───────────────────────────────────────────────────────────────
+// ─── Supabase Auth ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      setAuthLoading(false);
+    };
+    checkAuth();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
+  
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setPositions([]);
+    setOptionPositions([]);
+    router.push('/auth/login');
+  };
+
+  // ─── Storage (Supabase + localStorage fallback) ────────────────────────────
   const loadAll = async () => {
+    if (user) {
+      // Load from Supabase
+      try {
+        const { data: stockData } = await supabase
+          .from('stock_positions')
+          .select('*')
+          .eq('user_id', user.id);
+        if (stockData && stockData.length > 0) {
+          setPositions(stockData.map(p => ({
+            id: p.id,
+            symbol: p.symbol,
+            shares: p.shares,
+            costBasis: p.cost_basis
+          })));
+        }
+        
+        const { data: optionData } = await supabase
+          .from('option_positions')
+          .select('*')
+          .eq('user_id', user.id);
+        if (optionData && optionData.length > 0) {
+          setOptionPositions(optionData.map(o => ({
+            id: o.id,
+            symbol: o.symbol,
+            type: o.type,
+            position: o.position,
+            strike: o.strike,
+            expiration: o.expiration,
+            quantity: o.quantity,
+            premium: o.premium
+          })));
+        }
+      } catch (err) {
+        console.error('Error loading from Supabase:', err);
+      }
+    } else {
+      // Fallback to localStorage
+      try {
+        const r1 = await storage.get('portfolio-positions');
+        if (r1) {
+          const valid = JSON.parse(r1.value).filter((p: Position) => p?.symbol && p?.shares && p?.costBasis);
+          setPositions(valid);
+        }
+      } catch {}
+      try {
+        const r2 = await storage.get('portfolio-option-positions');
+        if (r2) setOptionPositions(JSON.parse(r2.value));
+      } catch {}
+    }
+  };
+  
+  const savePositions = async (list: Position[]) => {
+    setPositions(list);
+    
+    if (user) {
+      // Save to Supabase - delete all and re-insert
+      try {
+        await supabase.from('stock_positions').delete().eq('user_id', user.id);
+        if (list.length > 0) {
+          await supabase.from('stock_positions').insert(
+            list.map(p => ({
+              user_id: user.id,
+              symbol: p.symbol,
+              shares: p.shares,
+              cost_basis: p.costBasis
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Error saving to Supabase:', err);
+      }
+    }
+    
+    // Always save to localStorage as backup
+    await storage.set('portfolio-positions', JSON.stringify(list));
+  };
+  
+  const saveOptions = async (list: OptionPosition[]) => {
+    setOptionPositions(list);
+    
+    if (user) {
+      // Save to Supabase - delete all and re-insert
+      try {
+        await supabase.from('option_positions').delete().eq('user_id', user.id);
+        if (list.length > 0) {
+          await supabase.from('option_positions').insert(
+            list.map(o => ({
+              user_id: user.id,
+              symbol: o.symbol,
+              type: o.type,
+              position: o.position,
+              strike: o.strike,
+              expiration: o.expiration,
+              quantity: o.quantity,
+              premium: o.premium
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Error saving options to Supabase:', err);
+      }
+    }
+    
+    // Always save to localStorage as backup
+    await storage.set('portfolio-option-positions', JSON.stringify(list));
+  };
+  
+  // Migrate localStorage data to Supabase when user logs in
+  const migrateLocalDataToSupabase = async () => {
+    if (!user) return;
+    
+    // Check if user already has data in Supabase
+    const { data: existingStocks } = await supabase
+      .from('stock_positions')
+      .select('id')
+      .eq('user_id', user.id)
+      .limit(1);
+    
+    if (existingStocks && existingStocks.length > 0) return; // Already has data
+    
+    // Load from localStorage
     try {
       const r1 = await storage.get('portfolio-positions');
       if (r1) {
-        const valid = JSON.parse(r1.value).filter((p: Position) => p?.symbol && p?.shares && p?.costBasis);
-        setPositions(valid);
+        const localPositions = JSON.parse(r1.value).filter((p: Position) => p?.symbol && p?.shares && p?.costBasis);
+        if (localPositions.length > 0) {
+          await supabase.from('stock_positions').insert(
+            localPositions.map((p: Position) => ({
+              user_id: user.id,
+              symbol: p.symbol,
+              shares: p.shares,
+              cost_basis: p.costBasis
+            }))
+          );
+        }
       }
-    } catch {}
-    try {
+      
       const r2 = await storage.get('portfolio-option-positions');
-      if (r2) setOptionPositions(JSON.parse(r2.value));
-    } catch {}
+      if (r2) {
+        const localOptions = JSON.parse(r2.value);
+        if (localOptions.length > 0) {
+          await supabase.from('option_positions').insert(
+            localOptions.map((o: OptionPosition) => ({
+              user_id: user.id,
+              symbol: o.symbol,
+              type: o.type,
+              position: o.position,
+              strike: o.strike,
+              expiration: o.expiration,
+              quantity: o.quantity,
+              premium: o.premium
+            }))
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Error migrating data to Supabase:', err);
+    }
   };
-
-  const savePositions = async (list: Position[]) => {
-    await storage.set('portfolio-positions', JSON.stringify(list));
-    setPositions(list);
-  };
-
-  const saveOptions = async (list: OptionPosition[]) => {
-    await storage.set('portfolio-option-positions', JSON.stringify(list));
-    setOptionPositions(list);
-  };
+  
+  // Run migration when user logs in
+  useEffect(() => {
+    if (user) {
+      migrateLocalDataToSupabase().then(() => loadAll());
+    }
+  }, [user]);
 
   // ─── Price fetching ────────────────────────────────────────────────────────
   const fetchPrices = async () => {
@@ -1011,8 +1193,16 @@ export default function PortfolioMonetizer() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
-      {/* Header */}
+{authLoading ? (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <div className="text-center">
+        <DollarSign className="w-12 h-12 text-emerald-400 mx-auto mb-4 animate-pulse" />
+        <p className="text-slate-400">Loading...</p>
+      </div>
+    </div>
+  ) : (
+  <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
+  {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <DollarSign className="w-8 h-8 text-emerald-400" />
@@ -1083,10 +1273,48 @@ export default function PortfolioMonetizer() {
           <button onClick={openAddOption} className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg text-xs font-medium flex items-center gap-1">
             <Plus className="w-3 h-3" /> Option
           </button>
-          <button onClick={fetchPrices} disabled={priceLoading} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50">
-            <RefreshCw className={`w-3 h-3 ${priceLoading ? 'animate-spin' : ''}`} /> Refresh
+<button onClick={fetchPrices} disabled={priceLoading} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50">
+  <RefreshCw className={`w-3 h-3 ${priceLoading ? 'animate-spin' : ''}`} /> Refresh
+  </button>
+  
+  {/* User Account Menu */}
+  {user ? (
+    <div className="relative" ref={userMenuRef}>
+      <button
+        onClick={() => setUserMenuOpen(!userMenuOpen)}
+        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
+      >
+        <User className="w-3 h-3" />
+        <span className="hidden sm:inline">{user.email?.split('@')[0]}</span>
+        <ChevronDown className={`w-3 h-3 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {userMenuOpen && (
+        <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[160px]">
+          <div className="px-3 py-2 text-xs text-slate-400 border-b border-slate-700">
+            {user.email}
+          </div>
+          <div className="px-3 py-2 text-xs text-emerald-400 border-b border-slate-700">
+            Data synced across devices
+          </div>
+          <button
+            onClick={() => { handleSignOut(); setUserMenuOpen(false); }}
+            className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg flex items-center gap-2 text-red-400"
+          >
+            <LogOut className="w-3 h-3" /> Sign Out
           </button>
         </div>
+      )}
+    </div>
+  ) : (
+    <button
+      onClick={() => router.push('/auth/login')}
+      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-medium flex items-center gap-1"
+    >
+      <User className="w-3 h-3" /> Sign In
+    </button>
+  )}
+  </div>
+  </div>
       </div>
 
       <div className="text-sm text-slate-400 mb-6">
@@ -1666,5 +1894,6 @@ export default function PortfolioMonetizer() {
         </div>
       )}
     </div>
+  )}
   );
 }
