@@ -405,10 +405,10 @@ export default function PortfolioMonetizer() {
             symbol: o.symbol,
             type: o.type,
             position: o.position,
-            strike: o.strike,
+            strike: Number(o.strike),
             expiration: o.expiration,
-            quantity: o.quantity,
-            premium: o.premium
+            quantity: o.contracts,
+            premium: Number(o.entry_premium)
           })));
         }
       } catch (err) {
@@ -472,8 +472,8 @@ export default function PortfolioMonetizer() {
               position: o.position,
               strike: o.strike,
               expiration: o.expiration,
-              quantity: o.quantity,
-              premium: o.premium
+              contracts: o.quantity,
+              entry_premium: o.premium
             }))
           );
         }
@@ -528,8 +528,8 @@ export default function PortfolioMonetizer() {
               position: o.position,
               strike: o.strike,
               expiration: o.expiration,
-              quantity: o.quantity,
-              premium: o.premium
+              contracts: o.quantity,
+              entry_premium: o.premium
             }))
           );
         }
@@ -1192,16 +1192,19 @@ export default function PortfolioMonetizer() {
   );
 
   // ─── Render ────────────────────────────────────────────────────────────────
-  return (
-{authLoading ? (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="text-center">
-        <DollarSign className="w-12 h-12 text-emerald-400 mx-auto mb-4 animate-pulse" />
-        <p className="text-slate-400">Loading...</p>
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <DollarSign className="w-12 h-12 text-emerald-400 mx-auto mb-4 animate-pulse" />
+          <p className="text-slate-400">Loading...</p>
+        </div>
       </div>
-    </div>
-  ) : (
-  <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
+    );
+  }
+  
+  return (
+    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
   {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
@@ -1894,6 +1897,5 @@ export default function PortfolioMonetizer() {
         </div>
       )}
     </div>
-  )}
   );
 }
