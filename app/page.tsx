@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TrendingUp, TrendingDown, AlertCircle, DollarSign, Upload, Download, Plus, X, Bell, Target, Calendar, Percent, Edit2, RefreshCw, ChevronDown, ChevronUp, Zap, Check, FileText, LogOut, User } from 'lucide-react';
@@ -1007,7 +1007,7 @@ export default function PortfolioMonetizer() {
     e.target.value = '';
   };
 
-  // ─── CSV Import for Options ─────────────────────────────────��──────────────
+  // ─── CSV Import for Options ─────────────────────────────────��─���────────────
   const importOptionsCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -1175,7 +1175,7 @@ export default function PortfolioMonetizer() {
   const inp = "w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500";
   const lbl = "block text-xs text-slate-400 mb-1";
 
-  // ─── Modals ──────────────────���─────────────────────────────────────────────
+  // ─── Modals ─────────────────────────────────────────────────────────────────
 
 
   const ConfirmModal = ({ type }: { type: string }) => (
