@@ -915,7 +915,7 @@ export default function PortfolioMonetizer() {
         case 'dte': aVal = a.dte; bVal = b.dte; break;
         case 'premium': aVal = a.premium; bVal = b.premium; break;
 case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
-  case 'incomePerDay': aVal = a.totalPremium / a.dte; bVal = b.totalPremium / b.dte; break;
+  case 'incomePerDay': aVal = a.premium * 100 / a.dte; bVal = b.premium * 100 / b.dte; break;
   case 'probProfit': aVal = a.probProfit; bVal = b.probProfit; break;
         default: return 0;
       }
@@ -1087,7 +1087,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
                 <td className="p-3">{opp.dte}d</td>
                 <td className="p-3">{opp.bid !== undefined ? `$${opp.premium.toFixed(2)}` : `~$${opp.premium.toFixed(2)}`}</td>
                 <td className="p-3 font-medium">${opp.totalPremium.toFixed(0)}</td>
-                <td className="p-3"><span className={`font-bold ${(opp.totalPremium / opp.dte) >= 50 ? 'text-amber-300' : (opp.totalPremium / opp.dte) >= 30 ? 'text-emerald-300' : 'text-green-400'}`}>${(opp.totalPremium / opp.dte).toFixed(2)}</span></td>
+                <td className="p-3"><span className={`font-bold ${(opp.premium * 100 / opp.dte) >= 15 ? 'text-amber-300' : (opp.premium * 100 / opp.dte) >= 10 ? 'text-emerald-300' : 'text-green-400'}`}>${(opp.premium * 100 / opp.dte).toFixed(2)}</span></td>
                 <td className="p-3"><span className={`${opp.probProfit >= 80 ? 'text-green-400' : opp.probProfit >= 60 ? 'text-yellow-400' : 'text-orange-400'}`}>{opp.probProfit.toFixed(0)}%</span></td>
                 {schwabConnected && <td className="p-3 text-xs">{opp.volume !== '--' ? `${opp.volume}/${opp.openInterest}` : '--'}</td>}
               </tr>
