@@ -1,3 +1,4 @@
+/* Portfolio Monetizer - v1.1 - $/Day column, fixed Schwab button */
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
