@@ -1,3 +1,4 @@
+/* Portfolio Monetizer - Updated Apr 2, 2026 */
 "use client"
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
