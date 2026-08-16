@@ -174,8 +174,10 @@ export default function PortfolioMonetizer() {
   // Dropdown states
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
   const importDropdownRef = useRef<HTMLDivElement>(null);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -185,6 +187,9 @@ export default function PortfolioMonetizer() {
       }
       if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
         setImportDropdownOpen(false);
+      }
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setExportDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -213,7 +218,7 @@ export default function PortfolioMonetizer() {
     if (Object.keys(marketData).length > 0) scanOpportunities();
   }, [marketData, selectedTimeframe]);
 
-  // ─── Schwab OAuth Flow ─────────────────────────────────────────────────────
+  // ──��� Schwab OAuth Flow ─────────────────────────────────────────────────────
   const loadSchwabTokens = async () => {
     try {
       const tokenResult = await storage.get('schwab-access-token');
@@ -966,7 +971,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
           )}
           
           <div className="relative" ref={templateDropdownRef}>
-            <button onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+            <button onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); setExportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
               <FileText className="w-3 h-3" /> Templates <ChevronDown className="w-3 h-3" />
             </button>
             {templateDropdownOpen && (
@@ -978,7 +983,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
           </div>
 
           <div className="relative" ref={importDropdownRef}>
-            <button onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+            <button onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); setExportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
               <Upload className="w-3 h-3" /> Import <ChevronDown className="w-3 h-3" />
             </button>
             {importDropdownOpen && (
@@ -991,6 +996,30 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
                   Import Options
                   <input type="file" accept=".csv" onChange={(e) => { importOptionsCSV(e); setImportDropdownOpen(false); }} className="hidden" />
                 </label>
+              </div>
+            )}
+          </div>
+
+          <div className="relative" ref={exportDropdownRef}>
+            <button onClick={() => { setExportDropdownOpen(!exportDropdownOpen); setImportDropdownOpen(false); setTemplateDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+              <Download className="w-3 h-3" /> Export <ChevronDown className="w-3 h-3" />
+            </button>
+            {exportDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[150px]">
+                <button
+                  onClick={() => { exportStocks(); setExportDropdownOpen(false); }}
+                  disabled={positions.length === 0}
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-t-lg disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                >
+                  Export Stocks {positions.length > 0 && <span className="text-slate-400">({positions.length})</span>}
+                </button>
+                <button
+                  onClick={() => { exportOptions(); setExportDropdownOpen(false); }}
+                  disabled={optionPositions.length === 0}
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                >
+                  Export Options {optionPositions.length > 0 && <span className="text-slate-400">({optionPositions.length})</span>}
+                </button>
               </div>
             )}
           </div>
