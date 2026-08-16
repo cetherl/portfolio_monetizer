@@ -93,6 +93,9 @@ interface Opportunity {
 }
 
 // ─── Black-Scholes (fallback only) ─────────────────────────────────────────
+const MIN_ANNUALIZED = 20;
+const MIN_POP = 75;
+
 const norm = (x: number) => {
   const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
   const sign = x < 0 ? -1 : 1;
@@ -174,8 +177,10 @@ export default function PortfolioMonetizer() {
   // Dropdown states
   const [templateDropdownOpen, setTemplateDropdownOpen] = useState(false);
   const [importDropdownOpen, setImportDropdownOpen] = useState(false);
+  const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
   const templateDropdownRef = useRef<HTMLDivElement>(null);
   const importDropdownRef = useRef<HTMLDivElement>(null);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -185,6 +190,9 @@ export default function PortfolioMonetizer() {
       }
       if (importDropdownRef.current && !importDropdownRef.current.contains(event.target as Node)) {
         setImportDropdownOpen(false);
+      }
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setExportDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -213,7 +221,7 @@ export default function PortfolioMonetizer() {
     if (Object.keys(marketData).length > 0) scanOpportunities();
   }, [marketData, selectedTimeframe]);
 
-  // ─── Schwab OAuth Flow ─────────────────────────────────────────────────────
+  // ──��� Schwab OAuth Flow ─────────────────────────────────────────────────────
   const loadSchwabTokens = async () => {
     try {
       const tokenResult = await storage.get('schwab-access-token');
@@ -605,7 +613,7 @@ export default function PortfolioMonetizer() {
             if (premium < 0.01) continue;
 
             const annualizedReturn = (premium / S) * (365 / dte) * 100;
-            if (annualizedReturn < 20) continue;
+            if (annualizedReturn < MIN_ANNUALIZED) continue;
 
             const totalPremium = premium * lots * 100;
             const breakeven = S - premium;
@@ -615,6 +623,8 @@ export default function PortfolioMonetizer() {
             const sigma = (contract.volatility as number) || 0.45;
             const d_breakeven = (Math.log(S / breakeven) + (r - sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
             const probAboveBreakeven = norm(d_breakeven) * 100;
+
+            if (probAboveBreakeven < MIN_POP) continue;
 
             const delta = (contract.delta as number) || 0.3;
             const probOTM = (1 - Math.abs(delta)) * 100;
@@ -664,7 +674,7 @@ export default function PortfolioMonetizer() {
             const { premium, delta, probOTM } = calcOptionData(S, K, exp.dte);
             const annualizedReturn = (premium / S) * (365 / exp.dte) * 100;
 
-            if (annualizedReturn < 20) continue;
+            if (annualizedReturn < MIN_ANNUALIZED) continue;
 
             const safetyMargin = ((K - S) / S) * 100;
             const totalPremium = premium * lots * 100;
@@ -675,6 +685,8 @@ export default function PortfolioMonetizer() {
             const sigma = 0.45;
             const d_breakeven = (Math.log(S / breakeven) + (r - sigma*sigma/2)*T) / (sigma*Math.sqrt(T));
             const probAboveBreakeven = norm(d_breakeven) * 100;
+
+            if (probAboveBreakeven < MIN_POP) continue;
 
             opps.push({
               id: `${pos.symbol}-${K}-${exp.date}`,
@@ -966,7 +978,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
           )}
           
           <div className="relative" ref={templateDropdownRef}>
-            <button onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+            <button onClick={() => { setTemplateDropdownOpen(!templateDropdownOpen); setImportDropdownOpen(false); setExportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
               <FileText className="w-3 h-3" /> Templates <ChevronDown className="w-3 h-3" />
             </button>
             {templateDropdownOpen && (
@@ -978,7 +990,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
           </div>
 
           <div className="relative" ref={importDropdownRef}>
-            <button onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+            <button onClick={() => { setImportDropdownOpen(!importDropdownOpen); setTemplateDropdownOpen(false); setExportDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
               <Upload className="w-3 h-3" /> Import <ChevronDown className="w-3 h-3" />
             </button>
             {importDropdownOpen && (
@@ -991,6 +1003,30 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
                   Import Options
                   <input type="file" accept=".csv" onChange={(e) => { importOptionsCSV(e); setImportDropdownOpen(false); }} className="hidden" />
                 </label>
+              </div>
+            )}
+          </div>
+
+          <div className="relative" ref={exportDropdownRef}>
+            <button onClick={() => { setExportDropdownOpen(!exportDropdownOpen); setImportDropdownOpen(false); setTemplateDropdownOpen(false); }} className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-medium flex items-center gap-1">
+              <Download className="w-3 h-3" /> Export <ChevronDown className="w-3 h-3" />
+            </button>
+            {exportDropdownOpen && (
+              <div className="absolute top-full right-0 mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg z-50 min-w-[150px]">
+                <button
+                  onClick={() => { exportStocks(); setExportDropdownOpen(false); }}
+                  disabled={positions.length === 0}
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-t-lg disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                >
+                  Export Stocks {positions.length > 0 && <span className="text-slate-400">({positions.length})</span>}
+                </button>
+                <button
+                  onClick={() => { exportOptions(); setExportDropdownOpen(false); }}
+                  disabled={optionPositions.length === 0}
+                  className="w-full px-3 py-2 text-left text-xs hover:bg-slate-700 rounded-b-lg disabled:opacity-40 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                >
+                  Export Options {optionPositions.length > 0 && <span className="text-slate-400">({optionPositions.length})</span>}
+                </button>
               </div>
             )}
           </div>
@@ -1054,7 +1090,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
 
       {/* Opportunities Table */}
       <div className="bg-slate-900 rounded-xl border border-slate-800 mb-6 overflow-x-auto">
-        <div className="p-4 border-b border-slate-800"><h2 className="font-semibold">Premium Opportunities (20% Annualized or higher)</h2></div>
+        <div className="p-4 border-b border-slate-800"><h2 className="font-semibold">Premium Opportunities ({MIN_ANNUALIZED}%+ Annualized, {MIN_POP}%+ PoP)</h2></div>
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-800">
@@ -1075,7 +1111,7 @@ case 'totalPremium': aVal = a.totalPremium; bVal = b.totalPremium; break;
           </thead>
           <tbody>
             {opportunities.length === 0 ? (
-              <tr><td colSpan={13} className="p-8 text-center text-slate-500">{loading || priceLoading ? 'Loading...' : positions.length === 0 ? 'Add positions' : 'No opportunities at 20% or higher'}</td></tr>
+              <tr><td colSpan={13} className="p-8 text-center text-slate-500">{loading || priceLoading ? 'Loading...' : positions.length === 0 ? 'Add positions' : `No opportunities at ${MIN_ANNUALIZED}%+ annualized with ${MIN_POP}%+ PoP`}</td></tr>
             ) : getSortedOpportunities().map(opp => (
               <tr key={opp.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
                 <td className="p-3"><span className="px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded text-xs">{opp.strategyType}</span></td>
