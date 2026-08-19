@@ -161,6 +161,7 @@ export default function PortfolioMonetizer() {
   const [schwabRefreshToken, setSchwabRefreshToken] = useState<string | null>(null);
   const [schwabConnected, setSchwabConnected] = useState(false);
   const [schwabStatus, setSchwabStatus] = useState('');
+  const scanRequestRef = useRef(0);
   
   // Sorting state
   const [stockSort, setStockSort] = useState<{ column: string | null; direction: 'asc' | 'desc' }>({ column: null, direction: 'asc' });
@@ -218,8 +219,10 @@ export default function PortfolioMonetizer() {
   }, [positions.length, schwabToken]);
 
   useEffect(() => {
-    if (Object.keys(marketData).length > 0) scanOpportunities();
-  }, [marketData, selectedTimeframe]);
+    if (Object.keys(marketData).length > 0 && positions.length > 0) {
+      scanOpportunities();
+    }
+  }, [marketData, positions, selectedTimeframe, schwabToken]);
 
   // ──��� Schwab OAuth Flow ─────────────────────────────────────────────────────
   const loadSchwabTokens = async () => {
@@ -573,6 +576,7 @@ export default function PortfolioMonetizer() {
 
   // ─── Opportunity Scanner ───────────────────────────────────────────────────
   const scanOpportunities = useCallback(async () => {
+    const requestId = ++scanRequestRef.current;
     const opps: Opportunity[] = [];
 
     for (const pos of positions) {
@@ -728,6 +732,7 @@ export default function PortfolioMonetizer() {
       return symbolCount[o.symbol] <= 3;
     }).slice(0, 10);
     
+    if (requestId !== scanRequestRef.current) return;
     setOpportunities(limited);
     
     const hotAlerts = unique.filter(o => o.annualizedReturn >= 40).slice(0, 3).map(o => ({
