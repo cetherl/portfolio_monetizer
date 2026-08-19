@@ -93,7 +93,7 @@ interface Opportunity {
 }
 
 // ─── Black-Scholes (fallback only) ─────────────────────────────────────────
-const MIN_ANNUALIZED = 20;
+const MIN_ANNUALIZED = 10;
 const MIN_POP = 75;
 
 const norm = (x: number) => {
